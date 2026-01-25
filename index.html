@@ -180,6 +180,16 @@
       form.submit();
     }
 
+    // ✅ (정리) 기기 고유 ID: 클릭 이벤트 밖에서 1번만 정의
+    function getDeviceId() {
+      let id = localStorage.getItem("device_id");
+      if (!id) {
+        id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random()));
+        localStorage.setItem("device_id", id);
+      }
+      return id;
+    }
+
     // 숫자 입력 <-> 슬라이더 동기화
     function syncFromRange() {
       $("scoreVal").textContent = $("score").value;
@@ -219,20 +229,14 @@
       const rec = recommend(input);
 
       render(rec.list);
-function getDeviceId() {
-  let id = localStorage.getItem("device_id");
-  if (!id) {
-    id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random()));
-    localStorage.setItem("device_id", id);
-  }
-  return id;
-}
-const payload = {
-  input,
-  result: rec,
-  deviceId: getDeviceId(),
-  ua: navigator.userAgent
-};
+
+      // ✅ (정리) payload는 여기서만 생성
+      const payload = {
+        input,
+        result: rec,
+        deviceId: getDeviceId(),
+        ua: navigator.userAgent
+      };
 
       saveToSheet(payload);
     });
