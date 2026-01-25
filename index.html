@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>수학 문제집/강좌 추천기</title>
+  <style>
+    :root{
+      --bg:#f4f4f5;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+
+      /* 말차 포인트 */
+      --matcha:#555b25;
+      --matcha-weak: rgba(85,91,37,.14);
+    }
+
+    body{ margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    .container{ max-width:860px; margin:24px auto; padding:0 16px; }
+    h1{ margin:0 0 12px; font-size:28px; }
+    h2{ margin:0 0 10px; font-size:18px; }
+    .muted{ color:var(--muted); }
+    .small{ font-size:13px; }
+    .card{
+      background:var(--card);
+      border-radius:14px;
+      padding:16px;
+      margin:12px 0;
+      box-shadow:0 2px 10px rgba(0,0,0,.06);
+    }
+
+    /* 질문 블록 */
+    .qblock{ margin:14px 0; }
+    .qlabel{ font-weight:800; margin-bottom:8px; line-height:1.35; }
+
+    /* 직사각형 선택 버튼 */
+    .choice-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+      gap:10px;
+    }
+    .choice-btn{
+      height:46px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fafafa;
+      cursor:pointer;
+      user-select:none;
+      font-weight:900;
+      padding:0 12px;
+      text-align:center;
+      color:var(--text);
+    }
+    .choice-btn:hover{ border-color:#d1d5db; }
+    .choice-btn.is-active{
+      border-color:var(--matcha);
+      box-shadow:0 0 0 3px var(--matcha-weak);
+      background:#f7f7f3;
+    }
+
+    /* 점수: iPhone 줌 느낌 (- slider +) */
+    .zoom-control{ display:flex; align-items:center; gap:10px; }
+    .zoom-btn{
+      width:42px; height:42px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:#f3f4f6;
+      color:var(--text);
+      font-weight:900;
+      font-size:22px;
+      cursor:pointer;
+    }
+    .zoom-btn:active{ transform:translateY(1px); }
+
+    #score{
+      width:100%;
+      height:6px;
+      border-radius:999px;
+      outline:none;
+      -webkit-appearance:none;
+      appearance:none;
+      background:linear-gradient(to right, var(--matcha) 0%, var(--matcha) 0%, #e5e7eb 0%, #e5e7eb 100%);
+    }
+    #score::-webkit-slider-thumb{
+      -webkit-appearance:none; appearance:none;
+      width:18px; height:18px; border-radius:999px;
+      background:var(--matcha);
+      border:2px solid #fff;
+      box-shadow:0 1px 4px rgba(0,0,0,.18);
+      cursor:pointer;
+    }
+    #score::-moz-range-track{ height:6px; border-radius:999px; background:#e5e7eb; }
+    #score::-moz-range-progress{ height:6px; border-radius:999px; background:var(--matcha); }
+    #score::-moz-range-thumb{
+      width:18px; height:18px; border-radius:999px;
+      background:var(--matcha);
+      border:2px solid #fff;
+      box-shadow:0 1px 4px rgba(0,0,0,.18);
+      cursor:pointer;
+    }
+    .zoom-value{ margin-top:10px; font-weight:900; }
+
+    /* 결과 */
+    .result{ line-height:1.6; white-space:pre-wrap; }
+    .btn-row{ display:flex; gap:10px; margin-top:12px; }
+    .btn{
+      display:inline-block;
+      padding:10px 14px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:#fafafa;
+      color:var(--text);
+      text-decoration:none;
+      font-weight:900;
+      cursor:pointer;
+    }
+    .btn:hover{ border-color:#d1d5db; }
+
+    /* 화면 전환(한 페이지 안에서 페이지처럼 보이게) */
+    .hidden{ display:none; }
+  </style>
+</head>
+
+<body>
+  <main class="container">
+    <h1>수학 문제집/강좌 추천기</h1>
+
+    <!-- 질문 화면 -->
+    <section id="pageQuestions" class="card">
+      <h2>질문</h2>
+
+      <div class="qblock">
+        <div class="qlabel">어떤 과목에 대한 추천을 원하시나요?</div>
+        <input type="hidden" id="track" />
+        <div class="choice-grid" data-target="track">
+          <button type="button" class="choice-btn" data-value="수1">수1</button>
+          <button type="button" class="choice-btn" data-value="수2">수2</button>
+          <button type="button" class="choice-btn" data-value="미적">미적</button>
+          <button type="button" class="choice-btn" data-value="확통">확통</button>
+          <button type="button" class="choice-btn" data-value="기하">기하</button>
+        </div>
+      </div>
+
+      <div class="qblock">
+        <div class="qlabel">인강을 들으실 건가요, 아니면 자습으로 진행하실 건가요?</div>
+        <input type="hidden" id="mode" />
+        <div class="choice-grid" data-target="mode">
+          <button type="button" class="choice-btn" data-value="인강">인강</button>
+          <button type="button" class="choice-btn" data-value="자습">자습</button>
+        </div>
+      </div>
+
+      <div class="qblock">
+        <div class="qlabel">9월 모의고사 수학 점수는 몇 점이었나요?</div>
+
+        <div class="zoom-control">
+          <button type="button" class="zoom-btn" id="scoreDown" aria-label="점수 -1">−</button>
+          <input id="score" type="range" min="50" max="100" step="1" value="92" />
+          <button type="button" class="zoom-btn" id="scoreUp" aria-label="점수 +1">+</button>
+        </div>
+
+        <div class="zoom-value"><span id="scoreVal">92</span>점</div>
+      </div>
+
+      <div class="qblock">
+        <div class="qlabel">하루에 수학 공부를 몇 시간 정도 하실 계획인가요?</div>
+        <input type="hidden" id="hours" />
+        <div class="choice-grid" data-target="hours">
+          <button type="button" class="choice-btn" data-value="1">하루 1시간</button>
+          <button type="button" class="choice-btn" data-value="2">하루 2시간</button>
+          <button type="button" class="choice-btn" data-value="3">하루 3시간</button>
+          <button type="button" class="choice-btn" data-value="4">하루 4시간 이상</button>
+        </div>
+      </div>
+
+      <div class="qblock">
+        <div class="qlabel">본인이 어떤 부분이 부족한지(개념/기출/준킬러 등) 구체적으로 알고 계신가요?</div>
+        <input type="hidden" id="aware" />
+        <div class="choice-grid" data-target="aware">
+          <button type="button" class="choice-btn" data-value="예">예, 알고 있어요</button>
+          <button type="button" class="choice-btn" data-value="아니오">아니오, 잘 모르겠어요</button>
+        </div>
+      </div>
+
+      <div class="muted small">모든 문항을 답하면 자동으로 결과 화면이 표시됩니다.</div>
+    </section>
+
+    <!-- 결과 화면(새 페이지처럼 보이게) -->
+    <section id="pageResult" class="card hidden">
+      <h2>추천 결과</h2>
+      <div id="result" class="result muted">불러오는 중입니다.</div>
+      <div id="saveStatus" class="muted small" style="margin-top:10px;">자동 저장을 시도하는 중입니다.</div>
+
+      <div class="btn-row">
+        <button type="button" class="btn" id="backBtn">다시 선택하기</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /****************************************************************
+     * 0) 여기만 반드시 수정
+     ****************************************************************/
+    // Google Apps Script 웹앱 URL (반드시 /exec)
+    const GAS_ENDPOINT = "PASTE_YOUR_GAS_WEBAPP_URL_HERE";
+
+    /****************************************************************
+     * 1) 추천 데이터(당신이 준 12개 집합)
+     ****************************************************************/
+    const BASE_SETS = {
+      "50|인강": ["세젤쉬", "파운데이션", "개때잡", "시발점"],
+      "50|자습": ["한완수", "개념완성", "마플시너지", "쏀", "수특수완"],
+
+      "60|인강": ["파운데이션", "시발점", "개때잡"],
+      "60|자습": ["한완수", "쏀", "마플시너지", "한완기"],
+
+      "72|인강": ["시발점", "아이디어", "미친기본-시작편"],
+      "72|자습": ["팔구십퍼요", "시빌리삼", "싱글커넥션", "N티켓"],
+
+      "84|인강": ["뉴런", "미친개념", "아이디어", "수분감", "알파테크닉"],
+      "84|자습": ["한완수", "한완기", "수분감", "자이스토리", "마더텅", "어삼쉬사"],
+
+      "92|인강": ["뉴런", "미친개념", "아이디어", "드릴", "수분감", "미친기본-완성편"],
+      "92|자습": ["이해원 N제", "설레임", "4의 규칙", "드릴"],
+
+      "92+|인강": ["드릴", "드릴드", "뉴런", "미친기본-완성편"],
+      "92+|자습": ["4의 규칙", "샤인미 N제", "설맞이", "자이스토리", "수특수완"]
+    };
+
+    /****************************************************************
+     * 2) 유틸
+     ****************************************************************/
+    const $ = (id) => document.getElementById(id);
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+    function uniqKeepOrder(arr){
+      return [...new Map(arr.map(x => [x, true])).keys()];
+    }
+
+    /****************************************************************
+     * 3) 점수 구간(내부용 score_norm4 기준)
+     ****************************************************************/
+    function bucketScore(scoreNorm4){
+      if (scoreNorm4 <= 50) return "50";
+      if (scoreNorm4 <= 60) return "60";
+      if (scoreNorm4 <= 72) return "72";
+      if (scoreNorm4 <= 84) return "84";
+      if (scoreNorm4 <= 92) return "92";
+      return "92+";
+    }
+
+    /****************************************************************
+     * 4) 필터/인지 규칙(당신 규칙 그대로)
+     ****************************************************************/
+    function applyFilters(hours, list){
+      const h = Number(hours);
+      let out = [...list];
+
+      if (h === 1){
+        const remove = new Set(["자이스토리","마더텅","시발점","뉴런"]);
+        out = out.filter(x => !remove.has(x));
+      }
+      if (h === 2) out = out.slice(0, 2);
+      if (h === 3){
+        const remove = new Set(["자이스토리","마더텅"]);
+        out = out.filter(x => !remove.has(x));
+        if (!out.includes("수분감")) out.push("수분감");
+      }
+      return uniqKeepOrder(out);
+    }
+
+    function applyAwareness(modeEffective, aware, list){
+      let out = [...list];
+      if (aware === "예") return out;
+
+      if (modeEffective === "자습"){
+        if (!out.includes("한완기")) out.unshift("한완기");
+        if (!out.includes("한완수")) out.unshift("한완수");
+      }
+      return uniqKeepOrder(out);
+    }
+
+    /****************************************************************
+     * 5) 추천 계산
+     ****************************************************************/
+    function recommend(input){
+      const bucket = bucketScore(input.score_norm4);
+
+      // 1시간 + 인강 → 자습 전환
+      let mode_effective = input.mode_input;
+      if (Number(input.hours) === 1 && input.mode_input === "인강"){
+        mode_effective = "자습";
+      }
+
+      const base = BASE_SETS[`${bucket}|${mode_effective}`] || [];
+      let list = applyFilters(input.hours, base);
+      list = applyAwareness(mode_effective, input.aware, list);
+
+      return { bucket, mode_effective, list };
+    }
+
+    /****************************************************************
+     * 6) 화면 렌더(리스트만)
+     ****************************************************************/
+    function renderListOnly(list){
+      const box = $("result");
+      box.classList.remove("muted");
+      if (!list || list.length === 0){
+        box.textContent = "- (추천 없음)";
+        return;
+      }
+      box.textContent = list.map((x,i)=>`- ${i+1}. ${x}`).join("\n");
+    }
+
+    function showResultPage(){
+      $("pageQuestions").classList.add("hidden");
+      $("pageResult").classList.remove("hidden");
+      window.scrollTo(0,0);
+    }
+
+    function showQuestionPage(){
+      $("pageResult").classList.add("hidden");
+      $("pageQuestions").classList.remove("hidden");
+      $("saveStatus").textContent = "자동 저장을 시도하는 중입니다.";
+      window.scrollTo(0,0);
+    }
+
+    /****************************************************************
+     * 7) 자동 저장 (POST + GET 백업)
+     *    - CORS/응답 읽기 문제를 피하려고 no-cors 사용
+     ****************************************************************/
+    async function savePOST(payload){
+      // 응답은 읽지 못해도 서버로는 전송됨(대부분의 CORS 환경)
+      await fetch(GAS_ENDPOINT, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    function saveGETBackup(payload){
+      // URL 길이 문제를 피하려고 필드 최소화
+      const input = payload.input || {};
+      const result = payload.result || {};
+      const rec = Array.isArray(result.list) ? result.list.join(",") : "";
+
+      const params = new URLSearchParams({
+        t: payload.createdAt || new Date().toISOString(),
+        track: input.track || "",
+        mode_input: input.mode_input || "",
+        hours: String(input.hours || ""),
+        aware: input.aware || "",
+        score_raw: String(input.score_raw ?? ""),
+        score_norm4: String(input.score_norm4 ?? ""),
+        bucket: result.bucket || "",
+        mode_effective: result.mode_effective || "",
+        rec: rec
+      });
+
+      // fetch 대신 이미지 비콘 사용(가장 단순/안정)
+      const img = new Image();
+      img.src = `${GAS_ENDPOINT}?_
