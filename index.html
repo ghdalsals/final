@@ -86,7 +86,7 @@
 
   <script>
     // Google Apps Script 웹앱 URL (/exec)
-    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby1oKVC2Uqw-bwisNH68ka7Eg-lRJU3mMTC4Pcqfiqf2W6s3jKxwPBQ68UAV2w2tIyx0w/exec";
+    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwhbUxiepNBW-MEA7ifhATnEs_gsPB2dO9tUZVrUf1xnllYQ6rG4zEgIPkEGJ65RlA6wQ/exec";
 
     const BASE_SETS = {
       "50|인강": ["세젤쉬", "파운데이션", "개때잡", "시발점"],
@@ -219,8 +219,21 @@
       const rec = recommend(input);
 
       render(rec.list);
+function getDeviceId() {
+  let id = localStorage.getItem("device_id");
+  if (!id) {
+    id = (crypto.randomUUID ? crypto.randomUUID() : (Date.now() + "-" + Math.random()));
+    localStorage.setItem("device_id", id);
+  }
+  return id;
+}
+const payload = {
+  input,
+  result: rec,
+  deviceId: getDeviceId(),
+  ua: navigator.userAgent
+};
 
-      const payload = { createdAt: new Date().toISOString(), input, result: rec };
       saveToSheet(payload);
     });
   </script>
