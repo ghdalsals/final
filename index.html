@@ -33,9 +33,16 @@
     </p>
 
     <p>
-      <label>9월 모의고사 수학 점수는 몇 점이었나요? (50~100)
-        <input id="score" type="number" min="50" max="100" step="1" />
+      <label>9월 모의고사 수학 점수는 몇 점이었나요? (100 이하)
+        <input id="scoreNum" type="number" min="0" max="100" step="1" />
       </label>
+    </p>
+
+    <p>
+      <label>점수 조절(0~100)
+        <input id="score" type="range" min="0" max="100" step="1" value="92" />
+      </label>
+      <span>현재: <b id="scoreVal">92</b>점</span>
     </p>
 
     <p>
@@ -78,10 +85,8 @@
   </form>
 
   <script>
-    /***********************
-     * 여기에 /exec URL 넣기
-     ***********************/
-    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby1oKVC2Uqw-bwisNH68ka7Eg-lRJU3mMTC4Pcqfiqf2W6s3jKxwPBQ68UAV2w2tIyx0w/exec"; // 반드시 /exec 포함
+    // Google Apps Script 웹앱 URL (/exec)
+    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycby1oKVC2Uqw-bwisNH68ka7Eg-lRJU3mMTC4Pcqfiqf2W6s3jKxwPBQ68UAV2w2tIyx0w/exec";
 
     const BASE_SETS = {
       "50|인강": ["세젤쉬", "파운데이션", "개때잡", "시발점"],
@@ -165,7 +170,6 @@
     }
 
     function saveToSheet(payloadObj) {
-      // fetch(CORS) 대신 form POST 사용
       if (!GAS_ENDPOINT || GAS_ENDPOINT.includes("PASTE_YOUR_GAS_WEBAPP_URL_HERE")) {
         $("saveStatus").textContent = "저장 실패: GAS_ENDPOINT가 설정되지 않았습니다.";
         return;
@@ -177,6 +181,20 @@
       $("saveStatus").textContent = "저장 전송 완료(시트 반영은 몇 초 걸릴 수 있음)";
     }
 
+    // 숫자 입력 <-> 슬라이더 동기화
+    function syncFromRange() {
+      $("scoreVal").textContent = $("score").value;
+      $("scoreNum").value = $("score").value;
+    }
+    function syncFromNumber() {
+      const v = clamp(Number($("scoreNum").value), 0, 100);
+      $("score").value = String(v);
+      $("scoreVal").textContent = String(v);
+    }
+    $("score").addEventListener("input", syncFromRange);
+    $("scoreNum").addEventListener("input", syncFromNumber);
+    syncFromRange();
+
     $("go").addEventListener("click", () => {
       $("err").textContent = "";
       $("saveStatus").textContent = "";
@@ -185,16 +203,15 @@
       const mode_input = $("mode").value;
       const hours = $("hours").value;
       const aware = $("aware").value;
-      const score_raw = Number($("score").value);
 
+      let score_raw = Number($("score").value);
       if (!track || !mode_input || !hours || !aware || !Number.isFinite(score_raw)) {
         $("err").textContent = "모든 항목을 선택/입력해 주세요.";
         return;
       }
-      if (score_raw < 50 || score_raw > 100) {
-        $("err").textContent = "점수는 50~100 범위로 입력해 주세요.";
-        return;
-      }
+
+      // 100 이하만 강제(하한은 0으로 처리)
+      score_raw = clamp(score_raw, 0, 100);
 
       // 내부 4점 단위 정규화 (사용자 입력은 그대로 유지)
       const score_norm4 = clamp(Math.round(score_raw / 4) * 4, 0, 100);
@@ -202,15 +219,9 @@
       const input = { track, mode_input, hours, aware, score_raw, score_norm4 };
       const rec = recommend(input);
 
-      // 화면에는 추천 리스트만
       render(rec.list);
 
-      // 자동 저장
-      const payload = {
-        createdAt: new Date().toISOString(),
-        input,
-        result: rec
-      };
+      const payload = { createdAt: new Date().toISOString(), input, result: rec };
       saveToSheet(payload);
     });
   </script>
