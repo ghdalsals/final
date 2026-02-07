@@ -32,18 +32,18 @@
       </label>
     </p>
 
-    <p>
-      <label>9월 모의고사 수학 점수는 몇 점이었나요?
-        <input id="scoreNum" type="number" min="0" max="100" step="1" />
-      </label>
-    </p>
+    <!-- ✅ 점수 입력: 표준점수 다중 입력 -->
+    <div style="margin: 12px 0;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <b>표준점수 입력</b>
+        <button id="addScore" type="button">+ 점수 추가</button>
+      </div>
 
-    <p>
-      <label>점수 조절
-        <input id="score" type="range" min="0" max="100" step="1" value="100" />
-      </label>
-      <span>현재: <b id="scoreVal">100</b>점</span>
-    </p>
+      <div id="scores" style="margin-top:8px;"></div>
+      <small style="color:#555;">
+        여러 회차 점수를 입력하면 평균을 기준으로 추천합니다.
+      </small>
+    </div>
 
     <p>
       <label>하루에 수학 공부를 몇 시간 정도 하실 계획인가요?
@@ -58,7 +58,7 @@
     </p>
 
     <p>
-      <label>본인이 어떤 부분이 부족한지(개념/기출/준킬러 등) 구체적으로 알고 계신가요?
+      <label>본인이 어떤 부분이 부족한지 구체적으로 알고 계신가요?
         <select id="aware">
           <option value="">선택</option>
           <option value="예">예</option>
@@ -67,7 +67,7 @@
       </label>
     </p>
 
-    <button id="go">결과 보기</button>
+    <button id="go" type="button">결과 보기</button>
 
     <p id="err" style="color:#b00020;"></p>
   </div>
@@ -112,12 +112,21 @@
     const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
     const uniq = (arr) => [...new Map(arr.map(x => [x, true])).keys()];
 
-    function bucketScore(scoreNorm4) {
-      if (scoreNorm4 <= 50) return "50";
-      if (scoreNorm4 <= 60) return "60";
-      if (scoreNorm4 <= 72) return "72";
-      if (scoreNorm4 <= 84) return "84";
-      if (scoreNorm4 <= 92) return "92";
+    // ✅ 표준점수 구간 설정 (너희 기준에 맞게 숫자만 바꾸면 됨)
+    // 예: 평균 표준점수가 100 이하면 50, 110 이하면 60 ... 이런 식
+    const STD_BUCKET_CUTS = [
+      { max: 100, bucket: "50" },
+      { max: 110, bucket: "60" },
+      { max: 120, bucket: "72" },
+      { max: 130, bucket: "84" },
+      { max: 140, bucket: "92" },
+      { max: Infinity, bucket: "92+" }
+    ];
+
+    function bucketByStd(avgStdScore) {
+      for (const cut of STD_BUCKET_CUTS) {
+        if (avgStdScore <= cut.max) return cut.bucket;
+      }
       return "92+";
     }
 
@@ -150,7 +159,7 @@
     }
 
     function recommend(input) {
-      const bucket = bucketScore(input.score_norm4);
+      const bucket = bucketByStd(input.score_avg);
 
       // 1시간 + 인강 => 자습 전환
       let mode_effective = input.mode_input;
@@ -180,7 +189,7 @@
       form.submit();
     }
 
-    // ✅ (정리) 기기 고유 ID: 클릭 이벤트 밖에서 1번만 정의
+    // 기기 고유 ID
     function getDeviceId() {
       let id = localStorage.getItem("device_id");
       if (!id) {
@@ -190,19 +199,60 @@
       return id;
     }
 
-    // 숫자 입력 <-> 슬라이더 동기화
-    function syncFromRange() {
-      $("scoreVal").textContent = $("score").value;
-      $("scoreNum").value = $("score").value;
+    // ✅ 점수 입력칸(행) 생성/삭제
+    function makeScoreRow(initialValue = "") {
+      const row = document.createElement("div");
+      row.className = "scoreRow";
+      row.style.display = "flex";
+      row.style.alignItems = "center";
+      row.style.gap = "8px";
+      row.style.margin = "6px 0";
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.className = "scoreInput";
+      input.placeholder = "표준점수";
+      input.min = "0";
+      input.max = "200";
+      input.step = "1";
+      input.value = initialValue;
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.textContent = "삭제";
+      del.addEventListener("click", () => {
+        const wrap = $("scores");
+        // 최소 1개는 남기기
+        if (wrap.querySelectorAll(".scoreRow").length <= 1) return;
+        row.remove();
+      });
+
+      row.appendChild(input);
+      row.appendChild(del);
+      return row;
     }
-    function syncFromNumber() {
-      const v = clamp(Number($("scoreNum").value), 0, 100);
-      $("score").value = String(v);
-      $("scoreVal").textContent = String(v);
+
+    function getScores() {
+      const inputs = [...document.querySelectorAll(".scoreInput")];
+      const nums = inputs
+        .map(el => Number(el.value))
+        .filter(v => Number.isFinite(v));
+
+      // 0~200 범위 클램프
+      return nums.map(v => clamp(v, 0, 200));
     }
-    $("score").addEventListener("input", syncFromRange);
-    $("scoreNum").addEventListener("input", syncFromNumber);
-    syncFromRange();
+
+    function average(arr) {
+      if (!arr.length) return NaN;
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    // 초기 점수 1개 생성
+    $("scores").appendChild(makeScoreRow(""));
+
+    $("addScore").addEventListener("click", () => {
+      $("scores").appendChild(makeScoreRow(""));
+    });
 
     $("go").addEventListener("click", () => {
       $("err").textContent = "";
@@ -213,24 +263,27 @@
       const hours = $("hours").value;
       const aware = $("aware").value;
 
-      let score_raw = Number($("score").value);
-      if (!track || !mode_input || !hours || !aware || !Number.isFinite(score_raw)) {
-        $("err").textContent = "모든 항목을 선택/입력해 주세요.";
+      const scores = getScores();
+      if (!track || !mode_input || !hours || !aware) {
+        $("err").textContent = "모든 항목을 선택해 주세요.";
+        return;
+      }
+      if (scores.length === 0) {
+        $("err").textContent = "표준점수를 최소 1개 이상 입력해 주세요.";
         return;
       }
 
-      // 100 이하만 강제(하한은 0으로 처리)
-      score_raw = clamp(score_raw, 0, 100);
+      const score_avg = average(scores);
+      if (!Number.isFinite(score_avg)) {
+        $("err").textContent = "표준점수 입력값을 확인해 주세요.";
+        return;
+      }
 
-      // 내부 4점 단위 정규화 (사용자 입력은 그대로 유지)
-      const score_norm4 = clamp(Math.round(score_raw / 4) * 4, 0, 100);
-
-      const input = { track, mode_input, hours, aware, score_raw, score_norm4 };
+      const input = { track, mode_input, hours, aware, scores, score_avg };
       const rec = recommend(input);
 
       render(rec.list);
 
-      // ✅ (정리) payload는 여기서만 생성
       const payload = {
         input,
         result: rec,
